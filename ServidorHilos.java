@@ -15,7 +15,7 @@ public class ServidorHilos{
             Thread hilo = new Thread(unCliente);
             clientes.put(Integer.toString(idCliente),unCliente);
             hilo.start();
-            System.out.println("Se conecto el wey n: "+idCliente);
+            System.out.println("Se conecto: "+idCliente);
             idCliente++;
         }
     }
