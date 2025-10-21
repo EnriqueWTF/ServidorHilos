@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.Socket;
 
 public class DosClientes implements Runnable {
+
     final DataOutputStream salida;
     final DataInputStream entrada;
     public final String idCliente;
@@ -21,6 +22,7 @@ public class DosClientes implements Runnable {
     public void run() {
         String mensaje;
         while (true) {
+
             try {
                 mensaje = entrada.readUTF().trim();
                 if (mensaje.isEmpty()) continue;

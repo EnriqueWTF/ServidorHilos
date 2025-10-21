@@ -10,7 +10,7 @@ public class ServidorHilos {
 
     public static void main(String[] args) {
         try (ServerSocket servidor = new ServerSocket(8080)) {
-            System.out.println("🟢 Servidor iniciado en puerto 8080...");
+            System.out.println("Servidor iniciado en puerto 8080...");
             int idCliente = 0;
 
             while (true) {
@@ -23,7 +23,7 @@ public class ServidorHilos {
                 clientes.put(id, cliente);
                 new Thread(cliente).start();
 
-                System.out.println("👤 Se conectó el cliente: " + id);
+                System.out.println("Se conectó el cliente: " + id);
                 idCliente++;
             }
 

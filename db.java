@@ -1,11 +1,9 @@
-
-
 import java.sql.*;
 
 public class db {
     private static final String URL = "jdbc:mysql://localhost:3306/chatdb";
     private static final String USER = "root";
-    private static final String PASS = "tu_contraseña_aquí"; // 🔹 cambia esto por tu contraseña
+    private static final String PASS = "Kikinwtf123$";
 
     private static Connection conn = null;
 
@@ -48,12 +46,12 @@ public class db {
                 ps.setString(2, blocked);
                 int affected = ps.executeUpdate();
                 return (affected == 0)
-                        ? "⚠️ El usuario " + blocked + " ya estaba bloqueado."
-                        : "✅ Has bloqueado al usuario " + blocked + ".";
+                        ? "El usuario " + blocked + " ya estaba bloqueado."
+                        : "Has bloqueado al usuario " + blocked + ".";
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            return "⚠️ Error al bloquear en la base de datos.";
+            return "Error al bloquear en la base de datos.";
         }
     }
 
