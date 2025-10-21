@@ -37,9 +37,9 @@ public class db {
 
     // Bloquear usuario
     public static synchronized String blockUser(String blocker, String blocked) {
-        if (blocker.equals(blocked)) return "❌ No puedes bloquearte a ti mismo.";
+        if (blocker.equals(blocked)) return " No puedes bloquearte a ti mismo.";
         try {
-            if (!userExists(blocked)) return "❌ El usuario " + blocked + " no existe.";
+            if (!userExists(blocked)) return "El usuario " + blocked + " no existe.";
             String sql = "INSERT IGNORE INTO bloqueos(blocker, blocked) VALUES(?, ?)";
             try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
                 ps.setString(1, blocker);
@@ -64,7 +64,7 @@ public class db {
                 ps.setString(2, blocked);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
-                        return "⚠️ El usuario " + blocked + " no estaba bloqueado.";
+                        return "El usuario " + blocked + " no estaba bloqueado.";
                     }
                 }
             }
@@ -74,12 +74,12 @@ public class db {
                 ps2.setString(1, blocker);
                 ps2.setString(2, blocked);
                 ps2.executeUpdate();
-                return "✅ Has desbloqueado al usuario " + blocked + ".";
+                return "Has desbloqueado al usuario " + blocked + ".";
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
-            return "⚠️ Error al desbloquear en la base de datos.";
+            return "Error al desbloquear en la base de datos.";
         }
     }
 

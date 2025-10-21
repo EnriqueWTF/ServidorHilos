@@ -50,6 +50,7 @@ public class DosClientes implements Runnable {
         }
     }
 
+    
     private void enviarDirecto(String mensaje) throws IOException {
         String[] partes = mensaje.split(" ", 2);
         if (partes.length < 2) {
