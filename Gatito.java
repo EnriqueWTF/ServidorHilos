@@ -59,12 +59,12 @@ public class Gatito {
      */
     public void iniciarJuego() {
         String msgX = "--- ¡Juego de Gato Iniciado! --- \n" +
-                      "Tú juegas contra " + idJugadorO + ". Eres 'X'.\n" +
-                      "Es tu turno. " + getInstrucciones();
-        
+                "Tú juegas contra " + idJugadorO + ". Eres 'X'.\n" +
+                "Es tu turno. " + getInstrucciones();
+
         String msgO = "--- ¡Juego de Gato Iniciado! --- \n" +
-                      "Tú juegas contra " + idJugadorX + ". Eres 'O'.\n" +
-                      "Espera el turno de 'X'. " + getInstrucciones();
+                "Tú juegas contra " + idJugadorX + ". Eres 'O'.\n" +
+                "Espera el turno de 'X'. " + getInstrucciones();
 
         enviarMensajeAmbos(dibujarTablero());
         enviarMensajeJuego(handlerX, msgX);
@@ -124,16 +124,20 @@ public class Gatito {
         // Dibujar el tablero actualizado para ambos
         enviarMensajeAmbos(dibujarTablero());
 
+        // --- INICIO DE MODIFICACIÓN PARA RANKING ---
         // Verificar estado del juego
         if (verificarGanador(marca)) {
-            terminarJuego("¡El jugador " + idJugador + " (" + marca + ") ha ganado!");
+            // Pasamos el ID del ganador como resultado
+            terminarJuego("¡El jugador " + idJugador + " (" + marca + ") ha ganado!", idJugador);
         } else if (movimientos == 9) {
-            terminarJuego("¡Es un empate!");
+            // Pasamos "EMPATE" como resultado
+            terminarJuego("¡Es un empate!", "EMPATE");
         } else {
             // Cambiar turno
             idTurnoActual = (idTurnoActual.equals(idJugadorX)) ? idJugadorO : idJugadorX;
             enviarMensajeAmbos("Es el turno de " + idTurnoActual + " (" + (idTurnoActual.equals(idJugadorX) ? 'X' : 'O') + ").");
         }
+        // --- FIN DE MODIFICACIÓN PARA RANKING ---
     }
 
     /**
@@ -148,23 +152,34 @@ public class Gatito {
         // Diagonales
         if (tablero[0][0] == marca && tablero[1][1] == marca && tablero[2][2] == marca) return true;
         if (tablero[0][2] == marca && tablero[1][1] == marca && tablero[2][0] == marca) return true;
-        
+
         return false;
     }
 
-    /**
-     * Finaliza el juego, notifica y lo elimina del servidor.
-     */
-    private void terminarJuego(String mensaje) {
+
+
+    private void terminarJuego(String mensaje, String resultado) {
         enviarMensajeAmbos("--- Fin del Juego ---");
         enviarMensajeAmbos(mensaje);
         this.juegoActivo = false;
+
+        // --- INICIO DE CÓDIGO NUEVO PARA RANKING ---
+        try {
+            // Usamos los IDs de los jugadores X y O, y el resultado
+            db.registrarResultado(idJugadorX, idJugadorO, resultado);
+            System.out.println("Partida registrada: " + claveJuego + ", Resultado: " + resultado);
+        } catch (Exception e) {
+            System.err.println("Error crítico al registrar la partida: " + e.getMessage());
+            e.printStackTrace();
+        }
+        // --- FIN DE CÓDIGO NUEVO PARA RANKING ---
+
         // Se auto-elimina de la lista de juegos activos
         ServidorHilos.juegosActivos.remove(this.claveJuego);
     }
 
     /**
-     * Maneja cuando un jugador abandona (por /salirgato o desconexión).
+     Maneja cuando un jugador abandona (por /salirgato o desconexión).
      */
     public synchronized void forfeit(String idPerdedor) {
         if (!juegoActivo) return; // El juego ya había terminado
@@ -174,15 +189,26 @@ public class Gatito {
         DosClientes handlerGanador = (idPerdedor.equals(idJugadorX)) ? handlerO : handlerX;
 
         String mensaje = "Tu oponente (" + idPerdedor + ") ha abandonado la partida. ¡Has ganado!";
-        
+
         // No necesitamos notificar al perdedor (ya se fue o usó /salirgato)
         enviarMensajeJuego(handlerGanador, mensaje);
-        
-        // Quien llama a forfeit (DosClientes) se encarga de remover el juego del HashMap.
+
+
+        // Registrar la victoria para el ganador por forfeit
+        try {
+            db.registrarResultado(idJugadorX, idJugadorO, idGanador);
+            System.out.println("Partida registrada (forfeit): " + claveJuego + ", Ganador: " + idGanador);
+        } catch (Exception e) {
+            System.err.println("Error crítico al registrar la partida por forfeit: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+
+
     }
 
-  
-    
+
+
     private DosClientes getHandler(String id) {
         return id.equals(idJugadorX) ? handlerX : handlerO;
     }
@@ -198,7 +224,7 @@ public class Gatito {
                 handler.salida.writeUTF("[GATO] " + mensaje);
             }
         } catch (IOException e) {
-          
+            // El handler del otro jugador pudo haberse desconectado
             System.err.println("Error al enviar mensaje de juego: " + e.getMessage());
         }
     }
