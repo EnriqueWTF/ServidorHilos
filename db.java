@@ -1,5 +1,7 @@
 import java.sql.*;
 
+import java.sql.*;
+
 public class db {
     private static final String URL = "jdbc:mysql://localhost:3306/chatdb";
     private static final String USER = "root";
@@ -99,7 +101,7 @@ public class db {
     }
 
 
-
+    // --- MÉTODOS DE RANKING (TU CÓDIGO) ---
 
     public static synchronized void registrarResultado(String j1, String j2, String resultado) {
         // 1. Guardar la partida
@@ -268,5 +270,59 @@ public class db {
         }
     }
 
+
+    // --- INICIO DE CÓDIGO NUEVO PARA LOGIN/REGISTRO (VERSIÓN SIMPLE) ---
+
+    /**
+     * NUEVO (Versión Simple): Registra un nuevo usuario en la base de datos.
+     * (Recuerda haber corrido en MySQL: ALTER TABLE usuarios ADD COLUMN password VARCHAR(50) NOT NULL;)
+     */
+    public static synchronized String registerUser(String username, String password) {
+        if (username.isEmpty() || password.isEmpty()) {
+            return "ERROR: El usuario y la contraseña no pueden estar vacíos.";
+        }
+
+        try {
+            if (userExists(username)) {
+                return "ERROR: El nombre de usuario '" + username + "' ya existe.";
+            }
+
+            // Usamos la nueva columna "password"
+            String sql = "INSERT INTO usuarios(id, password, puntos) VALUES(?, ?, 0)";
+            try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+                ps.setString(1, username);
+                ps.setString(2, password); // Se guarda la contraseña en texto plano
+                ps.executeUpdate();
+                return "OK: Usuario '" + username + "' registrado exitosamente.";
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "ERROR: Ocurrió un error en la base de datos.";
+        }
+    }
+
+    /**
+     * NUEVO (Versión Simple): Verifica si el inicio de sesión es correcto.
+     */
+    public static synchronized boolean loginUser(String username, String password) {
+        try {
+            // Compara la contraseña directamente en la BD
+            String sql = "SELECT 1 FROM usuarios WHERE id = ? AND password = ?";
+
+            try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+                ps.setString(1, username);
+                ps.setString(2, password); // Compara la contraseña en texto plano
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next(); // true si encuentra coincidencia
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // --- FIN DE CÓDIGO NUEVO ---
 
 }

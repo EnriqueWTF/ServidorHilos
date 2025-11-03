@@ -20,7 +20,7 @@ public class DosClientes implements Runnable {
         salida.writeUTF("Comandos Chat: /block <id>, /unblock <id>, @<id> <mensaje>");
         salida.writeUTF("Comandos Gato: /gato <id>, /aceptar, /rechazar, /mover <oponente> <1-9>, /salirgato <oponente>");
         salida.writeUTF("Comandos Ranking: /ranking, /ranking <id1> <id2>");
-        salida.writeUTF("Comando para ayuda /help");
+
     }
 
 
