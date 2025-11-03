@@ -101,7 +101,7 @@ public class db {
     }
 
 
-    // --- MÉTODOS DE RANKING (TU CÓDIGO) ---
+
 
     public static synchronized void registrarResultado(String j1, String j2, String resultado) {
         // 1. Guardar la partida
@@ -271,12 +271,9 @@ public class db {
     }
 
 
-    // --- INICIO DE CÓDIGO NUEVO PARA LOGIN/REGISTRO (VERSIÓN SIMPLE) ---
 
-    /**
-     * NUEVO (Versión Simple): Registra un nuevo usuario en la base de datos.
-     * (Recuerda haber corrido en MySQL: ALTER TABLE usuarios ADD COLUMN password VARCHAR(50) NOT NULL;)
-     */
+
+
     public static synchronized String registerUser(String username, String password) {
         if (username.isEmpty() || password.isEmpty()) {
             return "ERROR: El usuario y la contraseña no pueden estar vacíos.";
@@ -302,9 +299,7 @@ public class db {
         }
     }
 
-    /**
-     * NUEVO (Versión Simple): Verifica si el inicio de sesión es correcto.
-     */
+
     public static synchronized boolean loginUser(String username, String password) {
         try {
             // Compara la contraseña directamente en la BD
@@ -323,6 +318,6 @@ public class db {
         }
     }
 
-    // --- FIN DE CÓDIGO NUEVO ---
+
 
 }

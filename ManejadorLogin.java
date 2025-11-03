@@ -14,10 +14,17 @@ public class ManejadorLogin implements Runnable {
 
     @Override
     public void run() {
-        try (
-                DataInputStream entrada = new DataInputStream(socket.getInputStream());
-                DataOutputStream salida = new DataOutputStream(socket.getOutputStream())
-        ) {
+
+
+        DataInputStream entrada = null;
+        DataOutputStream salida = null;
+
+        try {
+
+            entrada = new DataInputStream(socket.getInputStream());
+            salida = new DataOutputStream(socket.getOutputStream());
+
+
 
             salida.writeUTF("Bienvenido. Escribe [1] para Iniciar Sesión o [2] para Registrarse");
 
@@ -27,7 +34,7 @@ public class ManejadorLogin implements Runnable {
 
             String comando = partes[0];
             String usuario = (partes.length > 1) ? partes[1] : "";
-            String contrasena = (partes.length > 2) ? partes[2] : ""; // Variable renombrada
+            String contrasena = (partes.length > 2) ? partes[2] : "";
 
             String respuesta = "";
             boolean loginExitoso = false;
@@ -35,11 +42,9 @@ public class ManejadorLogin implements Runnable {
 
             if ("LOGIN".equals(comando)) {
 
-
                 if (ServidorHilos.clientes.containsKey(usuario)) {
                     respuesta = "ERROR: El usuario '" + usuario + "' ya está conectado.";
                 }
-
                 else if (db.loginUser(usuario, contrasena)) {
                     respuesta = "LOGIN_OK";
                     loginExitoso = true;
@@ -48,7 +53,6 @@ public class ManejadorLogin implements Runnable {
                 }
 
             } else if ("REGISTER".equals(comando)) {
-
                 respuesta = db.registerUser(usuario, contrasena);
 
             } else {
@@ -62,14 +66,10 @@ public class ManejadorLogin implements Runnable {
             if (loginExitoso) {
                 System.out.println("Se conectó el cliente: " + usuario);
 
-
-                // Usamos el 'usuario' como idCliente
                 DosClientes cliente = new DosClientes(socket, usuario);
 
-                // Lo añadimos a la lista de clientes activos
                 ServidorHilos.clientes.put(usuario, cliente);
 
-                // Iniciamos el hilo del chat
                 new Thread(cliente).start();
 
 
@@ -81,6 +81,15 @@ public class ManejadorLogin implements Runnable {
 
         } catch (IOException e) {
             System.out.println("Un cliente en proceso de login se desconectó: " + e.getMessage());
+
+            try {
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
+            } catch (IOException ex) {
+
+            }
+
         }
     }
 }
