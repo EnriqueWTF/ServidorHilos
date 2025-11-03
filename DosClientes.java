@@ -3,6 +3,7 @@ import java.net.Socket;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.List; // Necesario para el método de grupos
 
 public class DosClientes implements Runnable {
 
@@ -23,17 +24,13 @@ public class DosClientes implements Runnable {
         salida.writeUTF("Comandos Grupo: /creargrupo <nombre>, /invitar <usuario> <grupo>, /gmsg <grupo> <msg>");
     }
 
-
     @Override
     public void run() {
         String mensaje;
         while (true) {
 
             try {
-
                 mensaje = entrada.readUTF().trim();
-
-
                 if (mensaje.isEmpty()) continue;
 
                 if (mensaje.startsWith("/block ")) {
@@ -66,7 +63,7 @@ public class DosClientes implements Runnable {
 
                 } else if (mensaje.startsWith("/salirgato ")) {
                     String oponente = mensaje.substring(11).trim();
-                    manejarAbandono(oponente);
+                    manejarForfeit(oponente);
 
                     // --- Ranking ---
 
@@ -88,6 +85,38 @@ public class DosClientes implements Runnable {
                             salida.writeUTF(db.getStatsH2H(jugador1, jugador2));
                         }
                     }
+
+                    // --- Grupos ---
+
+                } else if (mensaje.startsWith("/creargrupo ")) {
+                    String nombreGrupo = mensaje.substring(12).trim();
+                    if (nombreGrupo.isEmpty()) {
+                        salida.writeUTF("Formato incorrecto. Usa: /creargrupo <nombre_del_grupo>");
+                    } else {
+                        salida.writeUTF(db.crearGrupo(nombreGrupo, idCliente));
+                    }
+
+                } else if (mensaje.startsWith("/invitar ")) {
+                    String[] partes = mensaje.split(" ", 3);
+                    if (partes.length < 3) {
+                        salida.writeUTF("Formato incorrecto. Usa: /invitar <usuario> <grupo>");
+                    } else {
+                        String idInvitado = partes[1];
+                        String nombreGrupo = partes[2];
+                        String respuesta = db.invitarAGrupo(idCliente, idInvitado, nombreGrupo);
+                        salida.writeUTF(respuesta);
+
+                        // Si la invitación fue exitosa, notifica al otro usuario si está conectado
+                        if (respuesta.startsWith("OK:")) {
+                            DosClientes invitado = ServidorHilos.clientes.get(idInvitado);
+                            if (invitado != null) {
+                                invitado.salida.writeUTF("¡" + idCliente + " te ha añadido al grupo '" + nombreGrupo + "'!");
+                            }
+                        }
+                    }
+
+                } else if (mensaje.startsWith("/gmsg ")) {
+                    manejarMensajeGrupo(mensaje);
 
                     // --- Chat ---
 
@@ -123,6 +152,8 @@ public class DosClientes implements Runnable {
         }
     }
 
+
+    // --- Métodos Ayudantes (Gato) ---
 
     /**
      * Invita a otro jugador a una partida de Gato.
@@ -228,7 +259,7 @@ public class DosClientes implements Runnable {
     }
 
 
-    private void manejarAbandono(String idOponente) throws IOException {
+    private void manejarForfeit(String idOponente) throws IOException {
         String claveJuego = ServidorHilos.getKeyJuego(idCliente, idOponente);
         Gatito juego = ServidorHilos.juegosActivos.remove(claveJuego);
 
@@ -239,12 +270,54 @@ public class DosClientes implements Runnable {
 
         salida.writeUTF("Has abandonado la partida contra " + idOponente + ".");
         juego.forfeit(idCliente);
+    }
 
+
+    // --- Métodos Ayudantes (Grupos) ---
+
+
+    private void manejarMensajeGrupo(String mensajeCompleto) throws IOException {
+        String[] partes = mensajeCompleto.split(" ", 3);
+        if (partes.length < 3) {
+            salida.writeUTF("Formato incorrecto. Usa: /gmsg <grupo> <mensaje>");
+            return;
+        }
+
+        String nombreGrupo = partes[1];
+        String texto = partes[2];
+
+        //  Verificar que el remitente sea miembro
+        if (!db.esMiembro(idCliente, nombreGrupo)) {
+            salida.writeUTF("No puedes enviar mensajes al grupo '" + nombreGrupo + "' porque no eres miembro.");
+            return;
+        }
+
+        //  Obtener la lista de todos los miembros del grupo
+        List<String> miembros = db.getMiembrosGrupo(nombreGrupo);
+        if (miembros.isEmpty()) {
+            salida.writeUTF("El grupo '" + nombreGrupo + "' no existe o no tiene miembros.");
+            return;
+        }
+
+        //  Formatear el mensaje
+        String msgFormateado = "[Grupo: " + nombreGrupo + "] " + idCliente + ": " + texto;
+
+        //  Enviar el mensaje a todos los miembros que estén CONECTADOS
+        for (DosClientes clienteConectado : ServidorHilos.clientes.values()) {
+
+            if (miembros.contains(clienteConectado.idCliente)) {
+                try {
+                    clienteConectado.salida.writeUTF(msgFormateado);
+                } catch (IOException e) {
+                    System.err.println("Error al enviar msg de grupo a " + clienteConectado.idCliente);
+                }
+            }
+        }
     }
 
 
     /**
-     * Métodos de Chat
+     * Envía un mensaje privado a un usuario específico.
      */
     private void enviarDirecto(String mensaje) throws IOException {
         String[] partes = mensaje.split(" ", 2);

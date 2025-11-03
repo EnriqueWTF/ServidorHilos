@@ -1,6 +1,8 @@
 import java.sql.*;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class db {
     private static final String URL = "jdbc:mysql://localhost:3306/chatdb";
@@ -17,7 +19,7 @@ public class db {
         return conn;
     }
 
-    // Añadir usuario si no existe
+
     public static synchronized void addUser(String id) throws SQLException {
         String sql = "INSERT IGNORE INTO usuarios(id) VALUES(?)";
         try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
@@ -101,7 +103,7 @@ public class db {
     }
 
 
-
+    // --- MÉTODOS DE RANKING ---
 
     public static synchronized void registrarResultado(String j1, String j2, String resultado) {
         // 1. Guardar la partida
@@ -114,15 +116,13 @@ public class db {
         } catch (SQLException e) {
             e.printStackTrace();
             System.err.println("Error al registrar la partida.");
-            // Si esto falla, no continuamos actualizando puntos.
             return;
         }
 
-        // Actualizar puntos
 
+        // 2. Actualizar puntos
         try {
             if ("EMPATE".equals(resultado)) {
-                // Empate: 1 punto para cada uno
                 String sqlEmpate = "UPDATE usuarios SET puntos = puntos + 1 WHERE id = ? OR id = ?";
                 try (PreparedStatement psPuntos = getConnection().prepareStatement(sqlEmpate)) {
                     psPuntos.setString(1, j1);
@@ -130,7 +130,6 @@ public class db {
                     psPuntos.executeUpdate();
                 }
             } else {
-                // Victoria: 2 puntos para el ganador (el 'resultado' es el ID del ganador)
                 String sqlVictoria = "UPDATE usuarios SET puntos = puntos + 2 WHERE id = ?";
                 try (PreparedStatement psPuntos = getConnection().prepareStatement(sqlVictoria)) {
                     psPuntos.setString(1, resultado);
@@ -152,7 +151,7 @@ public class db {
         try (PreparedStatement ps = getConnection().prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
-            if (!rs.isBeforeFirst()) { // Verifica si el ResultSet está vacío
+            if (!rs.isBeforeFirst()) {
                 return "Aún no hay nadie en el ranking. ¡Jueguen una partida!";
             }
 
@@ -180,9 +179,6 @@ public class db {
         int empates = 0;
 
         try {
-
-            // Buscamos partidas donde los jugadores sean (j1, j2) O (j2, j1)
-            // Y donde el resultado sea el ID del jugador 1.
             String sqlJ1 = "SELECT COUNT(*) FROM partidas " +
                     "WHERE ((id_jugador1 = ? AND id_jugador2 = ?) OR (id_jugador1 = ? AND id_jugador2 = ?)) " +
                     "AND resultado = ?";
@@ -192,17 +188,15 @@ public class db {
                 ps.setString(2, jugador2);
                 ps.setString(3, jugador2);
                 ps.setString(4, jugador1);
-                ps.setString(5, jugador1); // El resultado que buscamos es el ID del jugador 1
+                ps.setString(5, jugador1);
 
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        victoriasJugador1 = rs.getInt(1); // Obtenemos el conteo
+                        victoriasJugador1 = rs.getInt(1);
                     }
                 }
             }
 
-
-            // Es la misma consulta, pero ahora buscamos el ID del jugador 2 en el resultado.
             String sqlJ2 = "SELECT COUNT(*) FROM partidas " +
                     "WHERE ((id_jugador1 = ? AND id_jugador2 = ?) OR (id_jugador1 = ? AND id_jugador2 = ?)) " +
                     "AND resultado = ?";
@@ -212,7 +206,7 @@ public class db {
                 ps.setString(2, jugador2);
                 ps.setString(3, jugador2);
                 ps.setString(4, jugador1);
-                ps.setString(5, jugador2); // El resultado que buscamos es el ID del jugador 2
+                ps.setString(5, jugador2);
 
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
@@ -221,8 +215,6 @@ public class db {
                 }
             }
 
-
-            // Misma consulta, pero buscamos la palabra "EMPATE".
             String sqlEmpate = "SELECT COUNT(*) FROM partidas " +
                     "WHERE ((id_jugador1 = ? AND id_jugador2 = ?) OR (id_jugador1 = ? AND id_jugador2 = ?)) " +
                     "AND resultado = 'EMPATE'";
@@ -240,18 +232,15 @@ public class db {
                 }
             }
 
-
             int totalPartidas = victoriasJugador1 + victoriasJugador2 + empates;
             if (totalPartidas == 0) {
                 return "Los usuarios " + jugador1 + " y " + jugador2 + " nunca han jugado.";
             }
 
-            // Calculamos los porcentajes
             double porc_j1 = (victoriasJugador1 * 100.0) / totalPartidas;
             double porc_j2 = (victoriasJugador2 * 100.0) / totalPartidas;
             double porc_emp = (empates * 100.0) / totalPartidas;
 
-            // Devolvemos el texto formateado
             return String.format(
                     "---  Estadísticas: %s vs %s ---\n" +
                             "Partidas Totales: %d\n" +
@@ -271,8 +260,7 @@ public class db {
     }
 
 
-
-
+    // MÉTODOS DE LOGIN/REGISTRO
 
     public static synchronized String registerUser(String username, String password) {
         if (username.isEmpty() || password.isEmpty()) {
@@ -284,11 +272,10 @@ public class db {
                 return "ERROR: El nombre de usuario '" + username + "' ya existe.";
             }
 
-            // Usamos la nueva columna "password"
             String sql = "INSERT INTO usuarios(id, password, puntos) VALUES(?, ?, 0)";
             try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
                 ps.setString(1, username);
-                ps.setString(2, password); // Se guarda la contraseña en texto plano
+                ps.setString(2, password);
                 ps.executeUpdate();
                 return "OK: Usuario '" + username + "' registrado exitosamente.";
             }
@@ -299,17 +286,15 @@ public class db {
         }
     }
 
-
     public static synchronized boolean loginUser(String username, String password) {
         try {
-            // Compara la contraseña directamente en la BD
             String sql = "SELECT 1 FROM usuarios WHERE id = ? AND password = ?";
 
             try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
                 ps.setString(1, username);
-                ps.setString(2, password); // Compara la contraseña en texto plano
+                ps.setString(2, password);
                 try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next(); // true si encuentra coincidencia
+                    return rs.next();
                 }
             }
         } catch (SQLException e) {
@@ -318,6 +303,93 @@ public class db {
         }
     }
 
+    //  GRUPOS
 
+    public static synchronized String crearGrupo(String nombreGrupo, String idCreador) {
+        try {
+            // 1. crear el grupo
+            String sqlGrupo = "INSERT INTO grupos (nombre, id_creador) VALUES (?, ?)";
+            try (PreparedStatement ps = getConnection().prepareStatement(sqlGrupo)) {
+                ps.setString(1, nombreGrupo);
+                ps.setString(2, idCreador);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                return "ERROR: El grupo '" + nombreGrupo + "' ya existe o el nombre es inválido.";
+            }
 
+            // 2. Añadir al creador como miembro
+            String sqlMiembro = "INSERT INTO miembros_grupo (nombre_grupo, id_usuario) VALUES (?, ?)";
+            try (PreparedStatement ps = getConnection().prepareStatement(sqlMiembro)) {
+                ps.setString(1, nombreGrupo);
+                ps.setString(2, idCreador);
+                ps.executeUpdate();
+            }
+
+            return "OK: Grupo '" + nombreGrupo + "' creado. Tú eres el primer miembro.";
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "ERROR: Error de base de datos al crear grupo.";
+        }
+    }
+
+    public static synchronized boolean esMiembro(String idUsuario, String nombreGrupo) {
+        String sql = "SELECT 1 FROM miembros_grupo WHERE nombre_grupo = ? AND id_usuario = ?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, nombreGrupo);
+            ps.setString(2, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static synchronized String invitarAGrupo(String idInvitador, String idInvitado, String nombreGrupo) {
+        try {
+            // 1. Validaciones
+            if (!userExists(idInvitado)) {
+                return "ERROR: El usuario '" + idInvitado + "' no existe.";
+            }
+            if (!esMiembro(idInvitador, nombreGrupo)) {
+                return "ERROR: No puedes invitar. No eres miembro del grupo '" + nombreGrupo + "'.";
+            }
+            if (esMiembro(idInvitado, nombreGrupo)) {
+                return "ERROR: El usuario '" + idInvitado + "' ya es miembro de este grupo.";
+            }
+
+            // 2. Añadir al miembro
+            String sql = "INSERT INTO miembros_grupo (nombre_grupo, id_usuario) VALUES (?, ?)";
+            try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+                ps.setString(1, nombreGrupo);
+                ps.setString(2, idInvitado);
+                ps.executeUpdate();
+                return "OK: Has añadido a '" + idInvitado + "' al grupo '" + nombreGrupo + "'.";
+            }
+        } catch (SQLException e) {
+            if (e.getMessage().contains("FOREIGN KEY")) {
+                return "ERROR: El grupo '" + nombreGrupo + "' no existe.";
+            }
+            e.printStackTrace();
+            return "ERROR: Error de base de datos al invitar.";
+        }
+    }
+
+    public static synchronized List<String> getMiembrosGrupo(String nombreGrupo) {
+        List<String> miembros = new ArrayList<>();
+        String sql = "SELECT id_usuario FROM miembros_grupo WHERE nombre_grupo = ?";
+        try (PreparedStatement ps = getConnection().prepareStatement(sql)) {
+            ps.setString(1, nombreGrupo);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    miembros.add(rs.getString("id_usuario"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return miembros;
+    }
 }
