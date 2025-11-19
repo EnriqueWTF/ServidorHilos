@@ -2,18 +2,20 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.SQLException;
-import java.util.HashMap;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ServidorHilos {
-    static HashMap<String, DosClientes> clientes = new HashMap<>();
-    static HashMap<String, Gatito> juegosActivos = new HashMap<>();
-    static HashMap<String, String> invitaciones = new HashMap<>();
+    
+    static ConcurrentHashMap<String, DosClientes> clientes = new ConcurrentHashMap<>();
+    
+
+    static ConcurrentHashMap<Integer, ManejadorLogin> invitados = new ConcurrentHashMap<>();
+ 
+    static ConcurrentHashMap<String, Gatito> juegosActivos = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<String, String> invitaciones = new ConcurrentHashMap<>();
+  
+
 
     public static synchronized String getKeyJuego(String id1, String id2) {
         if (id1.compareTo(id2) < 0) {
@@ -30,10 +32,14 @@ public class ServidorHilos {
             while (true) {
                 Socket socket = servidor.accept();
 
-
-
-                new Thread(new ManejadorLogin(socket)).start();
-
+             
+                ManejadorLogin manejador = new ManejadorLogin(socket);
+                
+             
+                invitados.put(socket.getPort(), manejador);
+        
+                new Thread(manejador).start();
+               
             }
 
         } catch (IOException e) {
